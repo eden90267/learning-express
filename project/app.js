@@ -4,10 +4,21 @@ var app = express(); // 取得 express 所有功能
 // 增加靜態檔案的路徑
 app.use(express.static('public'));
 
-app.get('/', function (req, res) {
-  res.send('<html><head></head><body><img src="/images/logo.png"></body></html>');
-});
+var engine = require('ejs-locals');
+app.engine('ejs', engine);
+app.set('views', './views'); // set()：各種 express 設定的方式
+app.set('view engine', 'ejs');
 
+app.get('/', function (req, res) {
+  res.render('index', {
+    'show': true,
+    'title': '<h1>六角學院</h1>',
+    'boss': 'liao'
+  });
+});
+app.get('/user', function (req, res) {
+  res.render('user');
+});
 
 
 
