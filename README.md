@@ -486,3 +486,32 @@ app.post('/searchAJAX', function (req, res) {
 - x-www-urlencoded：常見傳統表單
 - raw/json：後端支援的話就可用
 
+## Router 進階設定
+
+```javascript
+// app.js
+// 路由
+var user = require('./routes/user');
+app.use('/user', user); // /user/*
+```
+
+```javascript
+// routes/user.js
+var express = require('express');
+var router = express.Router(); // 可以把路由資訊都先寫入
+
+
+router.get('/edit-profile', function (req, res) {
+  res.send('profile');
+});
+router.get('/photo', function (req, res) {
+  res.send('photo');
+});
+router.get('/card', function (req, res) {
+  res.send('card');
+});
+
+module.exports = router;
+```
+
+## express-generator
