@@ -177,3 +177,312 @@ app.get('/', function (req, res) {
 - 是一個 template
 - 30 頁 .html 要改 header 一個連結就得改 30 頁，但 HTML template
   就可以優雅的修改一個共用畫面
+
+## EJS - 環境安裝
+
+- ejs-locals：以 ejs 為基底，延伸一些其他的模組。類似 layout 用法就很好用
+
+```shell
+npm i ejs-locals --save
+```
+
+```javascript
+// app.js
+var engine = require('ejs-locals');
+app.engine('ejs', engine);
+app.set('views', './views'); // set()：各種 express 設定的方式
+app.set('view engine', 'ejs');
+
+app.get('/', function (req, res) {
+  // res.send('<html><head></head><body><img src="/images/logo.png"></body></html>');
+  res.render('index');
+});
+app.get('/user', function (req, res) {
+  res.render('user');
+});
+```
+
+```html
+<!-- views/index.html -->
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<h1>Hello</h1>
+</body>
+</html>
+```
+
+```html
+<!-- views/user.html -->
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<h1>Hello</h1>
+</body>
+</html>
+```
+
+## EJS - 參數傳入
+
+```javascript
+// app.js
+app.get('/', function (req, res) {
+  res.render('index', {
+    'title': '六角學院', 'boss': 'liao'
+  });
+});
+```
+
+```html
+<!-- views/index.html -->
+<h1><%= title %></h1>
+<h2><%= boss %></h2>
+```
+
+`<%=` 的意思是把裡面的東西轉成字串
+
+## EJS - 載入內容種類
+
+- `<%`：程式邏輯用
+- `<%=`：渲染成字串
+- `<%-`：渲染成有網頁格式
+- `-%>`：去掉沒有的空格
+
+```javascript
+// app.js
+app.get('/', function (req, res) {
+  res.render('index', {
+    'show': true,
+    'title': '<h1>六角學院</h1>', 
+    'boss': 'liao'
+  });
+});
+```
+
+```html
+<!-- views/index.html -->
+<% if(show) { %>
+  <span>資料有呈現</span>
+<% } %>
+<%- title %>
+<h2><%= boss %></h2>
+```
+
+## EJS - 載入陣列
+
+```javascript
+app.get('/', function (req, res) {
+  res.render('index', {
+    'show': true,
+    'title': '<h1>六角學院</h1>',
+    'boss': 'liao',
+    'course': ['html', 'js', 'bs', 'php']
+  });
+});
+```
+
+```html
+<ul>
+    <% for (var i = 0;course.length > i;i++) { %>
+    <li><%- course[i] %></li>
+    <% } %>
+</ul>
+```
+
+## EJS - 設定 Layout
+
+```html
+<!-- views/layout.ejs -->
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<%- body %>
+</body>
+</html>
+```
+
+```html
+<!-- views/index.ejs -->
+<% layout('layout') %>
+
+<%- title %>
+<h2><%= boss %></h2>
+<ul>
+    <% for (var i = 0;course.length > i;i++) { %>
+    <li><%- course[i] %></li>
+    <% } %>
+</ul>
+```
+
+```html
+<% layout('layout') %>
+<h1>user</h1>
+```
+
+## Postman
+
+管理 API 服務 ([官網](https://www.getpostman.com/) 下載 app 到你的電腦)
+
+## Postman 取得 get 資料、基礎操作
+
+![](assets/postman-base.png)
+
+## body-parser - 取得表單資料
+
+幫忙把前端表單資料傳到後端去，放在 req.body 裡面
+
+```shell
+npm i body-parser --save
+```
+
+```javascript
+// app.js
+var bodyParser = require('body-parser');
+
+// 增加 body 解析
+app.use(bodyParser.json()); // 支援 json
+app.use(bodyParser.urlencoded({extended: false})); // 支援傳統表單格式：解析表單內容資料，讓表單順利抓出 name 的資料
+
+// ...
+
+app.get('/search', function (req, res) {
+  res.render('search');
+});
+app.post('/searchList', function (req, res) {
+  console.log(req.body); // {searchText: '', title: ''}
+});
+```
+
+```html
+<!-- views/search.ejs -->
+<% layout('layout') %>
+<form action="/searchList" method="post">
+    <input type="text" name="searchText" value="">
+    <input type="text" name="title" value="">
+    <input type="submit" value="送出">
+</form>
+```
+
+## Redirect 跳轉頁面設定
+
+```javascript
+// app.js
+app.post('/searchList', function (req, res) {
+  console.log(req.body);
+  // 轉址
+  res.redirect('search'); // 用 res.render('search')，網址會變成 /searchList，它是看路由來決定網址，所以需要用 res.redirect('search') 轉指到 search 頁去
+});
+```
+
+## 使用 postman 傳送表單資訊
+
+![](assets/postman-body.png)
+
+運用 postman 跟後端測試資料，不用一定要開瀏覽器表單來處理
+
+## POST AJAX 前後端介接原理
+
+```javascript
+// app.js
+app.post('/searchAJAX', function (req, res) {
+  console.log(req.body);
+  res.send('hello!');
+});
+```
+
+```html
+<!-- views/search.ejs -->
+<% layout('layout') %>
+<form action="/searchList" method="post">
+    <input type="text" name="content" id="content" value="">
+    <input type="submit" id="send" value="送出">
+</form>
+```
+
+```html
+<!-- views/layout.ejs -->
+<%- body %>
+<script src="/js/all.js"></script>
+```
+
+```javascript
+// public/js/all.js
+var send = document.getElementById('send');
+var content = document.getElementById('content');
+
+send.addEventListener('click', function (e) {
+  e.preventDefault();
+  var str = content.value;
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('post', '/searchAJAX');
+  xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+  // content=1234&title=hello
+  var data = 'content=' + str;
+  xhr.send(data);
+  xhr.onload = function () {
+    console.log(xhr.responseText);
+  }
+});
+```
+
+## POST AJAX JSON 格式
+
+```javascript
+// public/js/all.js
+var send = document.getElementById('send');
+var content = document.getElementById('content');
+
+send.addEventListener('click', function (e) {
+  e.preventDefault();
+  var str = content.value;
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('post', '/searchAJAX');
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  var data = JSON.stringify({'content': str, 'list': [1, 2, 3]});
+  xhr.send(data);
+  xhr.onload = function () {
+    console.log(xhr.responseText);
+  }
+});
+```
+
+```javascript
+// app.js
+app.post('/searchAJAX', function (req, res) {
+  console.log(req.body);
+  console.log(req.body.list[2]);
+  res.send('hello!');
+});
+```
+
+## Postman - POST AJAX JSON 格式講解
+
+![](assets/postman-json.png)
+
+- form-data：比較運用在有附加檔案的時候
+- x-www-urlencoded：常見傳統表單
+- raw/json：後端支援的話就可用
+
