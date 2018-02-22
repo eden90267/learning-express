@@ -515,3 +515,310 @@ module.exports = router;
 ```
 
 ## express-generator
+
+```shell
+npm i express-generator -g
+```
+
+```shell
+express -e myapp
+cd myapp
+npm install
+DEBUG=myapp:* npm start
+```
+
+```javascript
+// app.js
+var express = require('express');
+var path = require('path');
+var favicon = require('serve-favicon');
+var logger = require('morgan'); // 日誌 log
+var cookieParser = require('cookie-parser'); // 傳 cookie 資料做解析
+var bodyParser = require('body-parser');
+
+// 管理 routes
+var index = require('./routes/index');
+var users = require('./routes/users');
+
+var app = express();
+
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
+
+// uncomment after placing your favicon in /public
+//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+app.use(logger('dev'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.use('/', index);
+app.use('/users', users);
+
+// catch 404 and forward to error handler
+app.use(function(req, res, next) {
+  var err = new Error('Not Found');
+  err.status = 404; // 可以自己寫傳送到哪個頁面
+  next(err);
+});
+
+// error handler
+app.use(function(err, req, res, next) {
+  // set locals, only providing error in development
+  res.locals.message = err.message;
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+  // render the error page
+  res.status(err.status || 500);
+  res.render('error');
+});
+
+module.exports = app;
+```
+
+## Express 整合 Firebase 流程
+
+請參考：[node-expressFirebase-init](./node-expressFirebase-init)
+
+```javascript
+// app.js
+var admin = require("firebase-admin");
+
+var serviceAccount = require("../../project-29c37-firebase-adminsdk-68is7-1455c9a079.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://project-29c37.firebaseio.com"
+});
+
+var fireData = admin.database();
+console.log(fireData);
+```
+
+## Firebase - once、set 寫入讀取資料
+
+```javascript
+// app.js
+var fireData = admin.database();
+fireData.ref('/todos').once('value', function (snapshot) {
+  console.log(snapshot.val());
+});
+```
+
+## Firebase - then 設計思維
+
+set 完之後要執行的動作，可以接 then
+
+```javascript
+fireData.ref('todos')
+    .set({"title": 'hello'})
+    .then(function () {
+      fireData.ref('todos').once('value', function (snapshot) {
+        console.log(snapshot.val());
+      })
+    });
+```
+
+## EJS 整合 Firebase
+
+```javascript
+// app.js
+//路由
+app.get('/', function (req, res) {
+  fireData.ref('todos').once('value', function (snapshot) {
+    var data = snapshot.val();
+    var title = data.title;
+    res.render('index', {'title': title});
+  });
+});
+```
+
+```html
+<!--views/index.ejs-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<h1><%- title %></h1>
+</body>
+</html>
+```
+
+## RESTful API todolist - EJS 版型設計
+
+```html
+<!--views/index.ejs-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<h1><%- title %></h1>
+<input type="text" id="content" name="content">
+<input type="submit" id="send" name="儲存">
+<ul>
+    <li>1234 <input type="button" value="刪除"></li>
+</ul>
+<script src="/js/all.js"></script>
+</body>
+</html>
+```
+
+```javascript
+// public/js/all.js
+
+```
+
+## RESTful API todolist - 新增資料 API
+
+```javascript
+// app.js
+// 新增邏輯
+app.post('/addTodo', function (req, res) {
+  var content = req.body.content;
+  var contentRef = fireData.ref('todos').push();
+  contentRef.set({'content': content}).then(function () {
+    fireData.ref('todos').once('value', function (snapshot) {
+      res.send({
+        "success": true,
+        "result": snapshot.val(),
+        "message": "資料讀取成功"
+      });
+    })
+  });
+});
+```
+
+再透過 Postman 做測試
+
+## RESTful API todolist - 刪除資料
+
+```javascript
+// app.js
+// 刪除邏輯
+app.post('/removeTodo', function (req, res) {
+  var _id = req.body.id;
+  fireData.ref('todos').child(_id).remove().then(function () {
+    fireData.ref('todos').once('value', function (snapshot) {
+      res.send({
+        "success": true,
+        "result": snapshot.val(),
+        "message": "資料刪除成功"
+      });
+    })
+  });
+});
+```
+
+再透過 Postman 做測試
+
+## RESTful API todolist - EJS init
+
+```javascript
+// app.js
+//路由
+app.get('/', function (req, res) {
+  fireData.ref('todos').once('value', function (snapshot) {
+    var data = snapshot.val();
+    res.render('index', {'todolist': data});
+  });
+});
+```
+
+```html
+<!--views/index.ejs-->
+<h1>待辦事項列表</h1>
+<input type="text" id="content" name="content">
+<input type="submit" id="send" name="儲存">
+<ul>
+    <% for (var item in todolist) { %>
+    <li><%- todolist[item].content %> <input type="button" value="刪除"></li>
+    <% } %>
+</ul>
+```
+
+## RESTful API todolist - Client AJAX
+
+```javascript
+// public/js/all.js
+var send = document.getElementById('send');
+var content = document.getElementById('content');
+var list = document.getElementById('list');
+
+send.addEventListener('click', function (e) {
+  var str = content.value;
+  var xhr = new XMLHttpRequest();
+  xhr.open('post', '/addTodo');
+  xhr.setRequestHeader('Content-type', 'application/json');
+  var todo = JSON.stringify({'content': str});
+  xhr.send(todo);
+  xhr.onload = function () {
+    var originData = JSON.parse(xhr.responseText);
+    if (originData.success === false) {
+      alert(originData.message);
+      return;
+    }
+    var data = originData.result;
+    var str = '';
+    for (var item in data) {
+      str += '<li>' + data[item].content + ' <input type="button" data-id="' + item + '" value="刪除"></li>';
+    }
+    list.innerHTML = str;
+  }
+});
+
+list.addEventListener('click', function (e) {
+  if (e.target.nodeName !== 'INPUT') {
+    return;
+  }
+  var id = e.target.dataset.id;
+  var xhr = new XMLHttpRequest();
+  xhr.open('post', '/removeTodo');
+  xhr.setRequestHeader('Content-type', 'application/json');
+  var removeTodo = JSON.stringify({'id': id});
+  xhr.send(removeTodo);
+  xhr.onload = function () {
+    var originData = JSON.parse(xhr.responseText);
+    var data = originData.result;
+    var str = '';
+    for (var item in data) {
+      str += '<li>' + data[item].content + ' <input type="button" data-id="' + item + '" value="刪除"></li>';
+    }
+    list.innerHTML = str;
+  }
+});
+```
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<h1>待辦事項列表</h1>
+<input type="text" id="content" name="content">
+<input type="submit" id="send" name="儲存">
+<ul id="list">
+    <% for (var item in todolist) { %>
+    <li><%- todolist[item].content %> <input type="button" data-id="<%- item %>" value="刪除"></li>
+    <% } %>
+</ul>
+<script src="/js/all.js"></script>
+</body>
+</html>
+```
